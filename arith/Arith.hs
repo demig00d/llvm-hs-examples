@@ -21,7 +21,6 @@ import Data.Functor.Foldable hiding (fold)
 import Data.IORef
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
-import Data.Monoid
 import qualified Data.Set as Set
 import Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy.IO as Text
@@ -85,9 +84,6 @@ data ExprF a
 type Expr = Fix ExprF
 
 -- * Helpers for building expressions
-
-x :: Expr
-x = Fix Var
 
 lit :: Double -> Expr
 lit d = Fix (Lit d)
@@ -186,6 +182,7 @@ paren b x
   | b = "(" ++ x ++ ")"
   | otherwise = x
 
+function :: String -> String -> String
 function name arg =
   name ++ paren True arg
 
@@ -210,10 +207,10 @@ isVar _ = False
 -- | Evaluate an 'Expr'ession using standard
 --   'Num', 'Fractional' and 'Floating' operations.
 eval :: Expr -> (Double -> Double)
-eval fexpr x = cata alg fexpr
+eval fexpr s = cata alg fexpr
   where
     alg e = case e of
-      Var -> x
+      Var -> s
       Lit d -> d
       Add a b -> a + b
       Sub a b -> a - b
@@ -272,21 +269,21 @@ codegen fexpr = LLVMIR.buildModule "arith.ll" $ do
     LLVMIR.ret res
   return ()
   where
-    alg arg _ (Lit d) =
+    alg _ _ (Lit d) =
       return (LLVM.ConstantOperand $ LLVM.Float $ LLVM.Double d)
     alg arg _ Var = return arg
-    alg arg _ (Add a b) = LLVMIR.fadd a b `LLVMIR.named` "x"
-    alg arg _ (Sub a b) = LLVMIR.fsub a b `LLVMIR.named` "x"
-    alg arg _ (Mul a b) = LLVMIR.fmul a b `LLVMIR.named` "x"
-    alg arg _ (Div a b) = LLVMIR.fdiv a b `LLVMIR.named` "x"
+    alg _ _ (Add a b) = LLVMIR.fadd a b `LLVMIR.named` "x"
+    alg _ _ (Sub a b) = LLVMIR.fsub a b `LLVMIR.named` "x"
+    alg _ _ (Mul a b) = LLVMIR.fmul a b `LLVMIR.named` "x"
+    alg _ _ (Div a b) = LLVMIR.fdiv a b `LLVMIR.named` "x"
     alg arg ps (Neg a) = do
       z <- alg arg ps (Lit 0)
       LLVMIR.fsub z a `LLVMIR.named` "x"
-    alg arg ps (Exp a) = callDblfun (ps Map.! "exp") a `LLVMIR.named` "x"
-    alg arg ps (Log a) = callDblfun (ps Map.! "log") a `LLVMIR.named` "x"
-    alg arg ps (Sqrt a) = callDblfun (ps Map.! "sqrt") a `LLVMIR.named` "x"
-    alg arg ps (Sin a) = callDblfun (ps Map.! "sin") a `LLVMIR.named` "x"
-    alg arg ps (Cos a) = callDblfun (ps Map.! "cos") a `LLVMIR.named` "x"
+    alg _ ps (Exp a) = callDblfun (ps Map.! "exp") a `LLVMIR.named` "x"
+    alg _ ps (Log a) = callDblfun (ps Map.! "log") a `LLVMIR.named` "x"
+    alg _ ps (Sqrt a) = callDblfun (ps Map.! "sqrt") a `LLVMIR.named` "x"
+    alg _ ps (Sin a) = callDblfun (ps Map.! "sin") a `LLVMIR.named` "x"
+    alg _ ps (Cos a) = callDblfun (ps Map.! "cos") a `LLVMIR.named` "x"
 
 codegenText :: Expr -> Text
 codegenText = LLVMPretty.ppllvm . codegen
@@ -358,13 +355,13 @@ cataM alg = c
 
 -- * Main
 
-f :: Floating a => a -> a
-f t = sin (pi * t / 2) * (1 + sqrt t) ^ 2
+fn :: Floating a => a -> a
+fn t = sin (pi * t / 2) * (1 + sqrt t) ^ (2 :: Int)
 
 main :: IO ()
 main = do
-  let res1 = map f [0 .. 10] :: [Double]
-  res2 <- withSimpleJIT (f x) (\fopt -> map fopt [0 .. 10])
+  let res1 = map fn [0 .. 10] :: [Double]
+  res2 <- withSimpleJIT (fn $ Fix Var) (\fopt -> map fopt [0 .. 10])
   if res1 == res2
     then putStrLn "results match" >> print res1
     else print res1 >> print res2 >> putStrLn "results don't match"

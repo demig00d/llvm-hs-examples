@@ -8,7 +8,6 @@ import LLVM.AST.Global
 import LLVM.Context
 import LLVM.Module
 
-import Control.Monad.Except
 import Data.ByteString.Char8 as BS
 
 int :: Type
@@ -44,8 +43,8 @@ module_ = defaultModule
 
 
 toLLVM :: AST.Module -> IO ()
-toLLVM mod = withContext $ \ctx -> do
-  llvm <- withModuleFromAST ctx mod moduleLLVMAssembly
+toLLVM mod_ = withContext $ \ctx -> do
+  llvm <- withModuleFromAST ctx mod_ moduleLLVMAssembly
   BS.putStrLn llvm
 
 
