@@ -306,7 +306,7 @@ resolver compileLayer symbol =
 
 symbolFromProcess :: JIT.MangledSymbol -> IO JIT.JITSymbol
 symbolFromProcess sym =
-  (\addr -> JIT.JITSymbol addr JIT.defaultJITSymbolFlags)
+  (`JIT.JITSymbol` JIT.defaultJITSymbolFlags)
     <$> JIT.getSymbolAddressInProcess sym
 
 resolv :: JIT.IRCompileLayer l -> JIT.SymbolResolver
@@ -329,7 +329,7 @@ withSimpleJIT expr doFun = do
     $ \mod' ->
       JIT.withHostTargetMachine Reloc.PIC CodeModel.Default CodeGenOpt.Default $ \tm ->
         JIT.withExecutionSession $ \es ->
-          JIT.withObjectLinkingLayer es (\k -> fmap (\rs -> rs Map.! k) (readIORef resolvers)) $ \objectLayer ->
+          JIT.withObjectLinkingLayer es (\k -> fmap (Map.! k) (readIORef resolvers)) $ \objectLayer ->
             JIT.withIRCompileLayer objectLayer tm $ \compileLayer -> do
               asm <- JIT.moduleLLVMAssembly mod'
               printExpr expr

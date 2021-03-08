@@ -67,7 +67,7 @@ eagerJit amod = do
   withTestModule amod $ \mod ->
     withHostTargetMachine PIC LLVM.CodeModel.Default LLVM.CodeGenOpt.Default $ \tm ->
       withExecutionSession $ \es ->
-        withObjectLinkingLayer es (\k -> fmap (\rs -> rs Map.! k) (readIORef resolvers)) $ \linkingLayer ->
+        withObjectLinkingLayer es (\k -> fmap (Map.! k) (readIORef resolvers)) $ \linkingLayer ->
           withIRCompileLayer linkingLayer tm $ \compileLayer -> do
             mainSymbol <- mangleSymbol compileLayer "add"
             asm <- moduleLLVMAssembly mod
