@@ -15,6 +15,7 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as BS
+import Data.Fix (Fix (Fix))
 import Data.Foldable
 import Data.Functor.Foldable hiding (fold)
 import Data.IORef
